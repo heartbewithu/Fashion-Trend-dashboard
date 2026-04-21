@@ -1,81 +1,36 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE html>
 <html>
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
-  <title></title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="2685.1">
-  <style type="text/css">
-    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; -webkit-text-stroke: #000000}
-    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; -webkit-text-stroke: #000000; min-height: 14.0px}
-    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px 'PingFang SC'; -webkit-text-stroke: #000000}
-    span.s1 {font-kerning: none}
-    span.s2 {font: 12.0px 'PingFang SC'; font-kerning: none}
-    span.s3 {font: 12.0px 'Apple Color Emoji'; font-kerning: none}
-    span.s4 {font: 12.0px Helvetica; font-kerning: none}
-  </style>
+<meta charset="UTF-8">
+<title>Trend Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
-<p class="p1"><span class="s1">&lt;!DOCTYPE html&gt;</span></p>
-<p class="p1"><span class="s1">&lt;html lang="zh"&gt;</span></p>
-<p class="p1"><span class="s1">&lt;head&gt;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;meta charset="UTF-8"&gt;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;title&gt;</span><span class="s2">欧洲服饰趋势分析</span><span class="s1">&lt;/title&gt;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>&lt;script src="https://cdn.jsdelivr.net/npm/chart.js"&gt;&lt;/script&gt;</span></p>
-<p class="p1"><span class="s1">&lt;/head&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;body&gt;</span></p>
-<p class="p1"><span class="s1">&lt;h1&gt;</span><span class="s3">📊</span><span class="s1"> </span><span class="s2">欧洲服饰趋势分析</span><span class="s1">&lt;/h1&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;canvas id="chart" width="400" height="200"&gt;&lt;/canvas&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;h2&gt;</span><span class="s3">📋</span><span class="s1"> </span><span class="s2">趋势结论</span><span class="s1">&lt;/h2&gt;</span></p>
-<p class="p1"><span class="s1">&lt;ul id="insights"&gt;&lt;/ul&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;script&gt;</span></p>
-<p class="p1"><span class="s1">const data = [</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>{ term: "tailleur", wow: 37.2 },</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>{ term: "satinkleid", wow: 37.2 },</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>{ term: "abendkleid", wow: 22.2 },</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>{ term: "bikini", wow: -28.2 },</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>{ term: "tshirt", wow: -37.3 }</span></p>
-<p class="p1"><span class="s1">];</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">// </span><span class="s2">图表</span></p>
-<p class="p1"><span class="s1">new Chart(document.getElementById('chart'), {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>type: 'bar',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>data: {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>labels: data.map(d =&gt; d.term),</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>datasets: [{</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>label: 'WoW</span><span class="s2">变化</span><span class="s1">',</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">      </span>data: data.map(d =&gt; d.wow)</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">    </span>}]</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>}</span></p>
-<p class="p1"><span class="s1">});</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p3"><span class="s4">// </span><span class="s1">自动分析</span></p>
-<p class="p1"><span class="s1">const insights = [];</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">if (data.filter(d =&gt; d.wow &gt; 0).length &gt; data.length / 2) {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>insights.push("</span><span class="s3">📈</span><span class="s1"> </span><span class="s2">市场在增长</span><span class="s1">");</span></p>
-<p class="p1"><span class="s1">} else {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>insights.push("</span><span class="s3">📉</span><span class="s1"> </span><span class="s2">市场在降温</span><span class="s1">");</span></p>
-<p class="p1"><span class="s1">}</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">if (data.some(d =&gt; d.term.includes("bikini"))) {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>insights.push("</span><span class="s3">🌤</span><span class="s1"> </span><span class="s2">夏季需求在下降</span><span class="s1">");</span></p>
-<p class="p1"><span class="s1">}</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">const ul = document.getElementById("insights");</span></p>
-<p class="p1"><span class="s1">insights.forEach(i =&gt; {</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>const li = document.createElement("li");</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>li.innerText = i;</span></p>
-<p class="p1"><span class="s1"><span class="Apple-converted-space">  </span>ul.appendChild(li);</span></p>
-<p class="p1"><span class="s1">});</span></p>
-<p class="p1"><span class="s1">&lt;/script&gt;</span></p>
-<p class="p2"><span class="s1"></span><br></p>
-<p class="p1"><span class="s1">&lt;/body&gt;</span></p>
-<p class="p1"><span class="s1">&lt;/html&gt;</span></p>
+
+<h1>Fashion Trend Dashboard</h1>
+<canvas id="chart"></canvas>
+
+<script>
+const data = [
+{ term: "tailleur", wow: 37.2 },
+{ term: "satinkleid", wow: 37.2 },
+{ term: "abendkleid", wow: 22.2 },
+{ term: "bikini", wow: -28.2 },
+{ term: "tshirt", wow: -37.3 }
+];
+
+new Chart(document.getElementById('chart'), {
+type: 'bar',
+data: {
+labels: data.map(d => d.term),
+datasets: [{
+label: 'WoW',
+data: data.map(d => d.wow)
+}]
+}
+});
+</script>
+
 </body>
 </html>
