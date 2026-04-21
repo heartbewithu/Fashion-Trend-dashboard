@@ -1,34 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
-<meta charset="UTF-8">
-<title>Trend Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <title>欧洲服饰趋势分析</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
+<h1>📊 欧洲服饰趋势分析</h1>
 
-<h1>Fashion Trend Dashboard</h1>
-<canvas id="chart"></canvas>
+<canvas id="chart" width="400" height="200"></canvas>
+
+<h2>📋 趋势结论</h2>
+<ul id="insights"></ul>
 
 <script>
 const data = [
-{ term: "tailleur", wow: 37.2 },
-{ term: "satinkleid", wow: 37.2 },
-{ term: "abendkleid", wow: 22.2 },
-{ term: "bikini", wow: -28.2 },
-{ term: "tshirt", wow: -37.3 }
+  { term: "tailleur", wow: 37.2 },
+  { term: "satinkleid", wow: 37.2 },
+  { term: "abendkleid", wow: 22.2 },
+  { term: "bikini", wow: -28.2 },
+  { term: "tshirt", wow: -37.3 }
 ];
 
+// 图表
 new Chart(document.getElementById('chart'), {
-type: 'bar',
-data: {
-labels: data.map(d => d.term),
-datasets: [{
-label: 'WoW',
-data: data.map(d => d.wow)
-}]
+  type: 'bar',
+  data: {
+    labels: data.map(d => d.term),
+    datasets: [{
+      label: 'WoW变化',
+      data: data.map(d => d.wow)
+    }]
+  }
+});
+
+// 自动分析
+const insights = [];
+
+if (data.filter(d => d.wow > 0).length > data.length / 2) {
+  insights.push("📈 市场在增长");
+} else {
+  insights.push("📉 市场在降温");
 }
+
+if (data.some(d => d.term.includes("bikini"))) {
+  insights.push("🌤 夏季需求在下降");
+}
+
+const ul = document.getElementById("insights");
+insights.forEach(i => {
+  const li = document.createElement("li");
+  li.innerText = i;
+  ul.appendChild(li);
 });
 </script>
 
