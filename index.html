@@ -2,58 +2,159 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>欧洲服饰趋势分析</title>
+  <title>欧洲服饰搜索趋势分析</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+      background: #f5f5f5;
+    }
+    h2 {
+      margin-top: 40px;
+    }
+    .chart-container {
+      width: 600px;
+      margin-bottom: 40px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    th {
+      background-color: #333;
+      color: white;
+    }
+  </style>
 </head>
 
 <body>
-<h1>📊 欧洲服饰趋势分析</h1>
 
-<canvas id="chart" width="400" height="200"></canvas>
+<h1>📊 欧洲市场搜索趋势分析</h1>
 
-<h2>📋 趋势结论</h2>
-<ul id="insights"></ul>
+<!-- ✅ CSV上传 -->
+<input type="file" id="csvFile" accept=".csv">
+
+<!-- 趋势图 -->
+<div class="chart-container">
+  <canvas id="trendChart"></canvas>
+</div>
+
+<!-- 语种分布 -->
+<div class="chart-container">
+  <canvas id="languageChart"></canvas>
+</div>
+
+<h2>📋 数据表</h2>
+<table id="dataTable">
+  <thead>
+    <tr>
+      <th>关键词</th>
+      <th>语种</th>
+      <th>WoW变化</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
 <script>
-const data = [
-  { term: "tailleur", wow: 37.2 },
-  { term: "satinkleid", wow: 37.2 },
-  { term: "abendkleid", wow: 22.2 },
-  { term: "bikini", wow: -28.2 },
-  { term: "tshirt", wow: -37.3 }
+let trendChart;
+let languageChart;
+
+// ===== 初始化空数据 =====
+let data = [];
+
+// ===== 渲染函数 =====
+function renderAll(data) {
+
+  // 清空表格
+  const tableBody = document.querySelector("#dataTable tbody");
+  tableBody.innerHTML = "";
+
+  // 表格
+  data.forEach(d => {
+    const row = `
+      <tr>
+        <td>${d.term}</td>
+        <td>${d.lang}</td>
+        <td style="color:${d.wow>0?'green':'red'}">${d.wow}%</td>
+      </tr>
+    `;
+    tableBody.innerHTML += row;
+  });
+
+  // ===== 图1：趋势 =====
+  if (trendChart) trendChart.destroy();
+
+  trendChart = new Chart(document.getElementById('trendChart'), {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.term),
+      datasets: [{
+        label: 'WoW变化 (%)',
+        data: data.map(d => d.wow)
+      }]
+    }
+  });
+
+  // ===== 图2：语种 =====
+  const langCount = {};
+  data.forEach(d => {
+    langCount[d.lang] = (langCount[d.lang] || 0) + 1;
+  });
+
+  if (languageChart) languageChart.destroy();
+
+  languageChart = new Chart(document.getElementById('languageChart'), {
+    type: 'pie',
+    data: {
+      labels: Object.keys(langCount),
+      datasets: [{
+        data: Object.values(langCount)
+      }]
+    }
+  });
+}
+
+// ===== CSV读取 =====
+document.getElementById("csvFile").addEventListener("change", function(e) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function(event) {
+    const text = event.target.result;
+    const rows = text.split("\n").slice(1); // 跳过表头
+
+    data = rows.map(row => {
+      const cols = row.split(",");
+      return {
+        term: cols[0],
+        lang: cols[1],
+        wow: parseFloat(cols[2])
+      };
+    }).filter(d => d.term); // 去空行
+
+    renderAll(data);
+  };
+
+  reader.readAsText(file);
+});
+
+// ===== 默认数据（可删）=====
+data = [
+  { term: "tailleur", lang: "法语", wow: 37.2 },
+  { term: "satinkleid", lang: "德语", wow: 37.2 },
+  { term: "abendkleid", lang: "德语", wow: 22.2 }
 ];
 
-// 图表
-new Chart(document.getElementById('chart'), {
-  type: 'bar',
-  data: {
-    labels: data.map(d => d.term),
-    datasets: [{
-      label: 'WoW变化',
-      data: data.map(d => d.wow)
-    }]
-  }
-});
+renderAll(data);
 
-// 自动分析
-const insights = [];
-
-if (data.filter(d => d.wow > 0).length > data.length / 2) {
-  insights.push("📈 市场在增长");
-} else {
-  insights.push("📉 市场在降温");
-}
-
-if (data.some(d => d.term.includes("bikini"))) {
-  insights.push("🌤 夏季需求在下降");
-}
-
-const ul = document.getElementById("insights");
-insights.forEach(i => {
-  const li = document.createElement("li");
-  li.innerText = i;
-  ul.appendChild(li);
-});
 </script>
 
 </body>
