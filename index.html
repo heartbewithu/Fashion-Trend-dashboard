@@ -2,93 +2,212 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>欧洲市场搜索趋势分析（稳定版）</title>
+<title>智能趋势分析系统</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
-body { font-family: Arial; margin:20px; background:#f5f5f5; }
-.chart-container { width:700px; margin-top:30px; }
-.analysis { background:white; padding:15px; margin-top:20px; }
-#loading { color:red; font-weight:bold; }
+body { font-family: Arial; margin: 20px; background: #f5f5f5;}
+.chart-container { width: 600px; margin-bottom: 40px;}
+table { border-collapse: collapse; width: 100%; background: white;}
+th, td { border: 1px solid #ddd; padding: 8px;}
+th { background: #333; color: white;}
+select { margin: 5px;}
 </style>
 </head>
 
 <body>
 
-<h1>📊 欧洲市场搜索趋势分析（稳定版）</h1>
+<h1>📊 智能搜索趋势分析</h1>
 
-<input type="file" id="fileInput" accept=".csv,.xlsx"/>
-<button onclick="analyze()">开始分析</button>
+<input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
 
-<div id="loading"></div>
-
-<div class="chart-container">
-  <canvas id="chart"></canvas>
+<div id="mapping" style="display:none;">
+  <h3>⚙️ 字段识别（如有错误可手动选择）</h3>
+  关键词：<select id="term"></select>
+  语种：<select id="lang"></select>
+  当前UV：<select id="uv"></select>
+  上周UV：<select id="lw"></select>
+  WoW：<select id="wow"></select>
+  <button onclick="applyMapping()">确认分析</button>
 </div>
 
-<h2>📋 Top结果</h2>
-<div id="result"></div>
+<div class="chart-container">
+  <canvas id="trendChart"></canvas>
+</div>
 
-<h2>🧠 自动分析</h2>
-<div id="analysis" class="analysis"></div>
+<div class="chart-container">
+  <canvas id="languageChart"></canvas>
+</div>
+
+<table id="dataTable">
+<thead>
+<tr><th>关键词</th><th>语种</th><th>WoW</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<ul id="insights"></ul>
 
 <script>
 
 let rawData = [];
+let chart1, chart2;
 
-// ===== 文件读取（稳定版）=====
-document.getElementById('fileInput').addEventListener('change', function(e){
-
+// ===== 上传 =====
+document.getElementById('fileInput').addEventListener('change', e => {
   const file = e.target.files[0];
-  if(!file) return;
-
-  document.getElementById('loading').innerText = "⏳ 正在读取文件...";
-
   const reader = new FileReader();
 
-  reader.onload = function(e){
-    try{
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, {type:'array'});
+  reader.onload = function(e) {
+    let data;
 
-      // 自动找有数据的sheet
-      let sheet = null;
-      for(let name of workbook.SheetNames){
-        const temp = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
-        if(temp.length > 0){
-          sheet = workbook.Sheets[name];
-          rawData = temp;
-          break;
-        }
-      }
+    if (file.name.endsWith(".csv")) {
+      const text = e.target.result;
+      const rows = text.split("\n");
+      const headers = rows[0].split(",");
 
-      console.log("读取数据:", rawData);
+      data = rows.slice(1).map(r => {
+        const cols = r.split(",");
+        let obj = {};
+        headers.forEach((h,i)=>obj[h]=cols[i]);
+        return obj;
+      });
 
-      if(rawData.length === 0){
-        alert("❌ 文件为空 or 没有表头");
-      } else {
-        document.getElementById('loading').innerText = "✅ 文件读取成功";
-      }
-
-    }catch(err){
-      console.error(err);
-      alert("❌ 文件解析失败（可能格式不对）");
+    } else {
+      const wb = XLSX.read(e.target.result, { type:'binary' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      data = XLSX.utils.sheet_to_json(sheet);
     }
+
+    rawData = data;
+    autoDetectColumns(data);
   };
 
-  reader.readAsArrayBuffer(file);
+  if (file.name.endsWith(".csv")) reader.readAsText(file);
+  else reader.readAsBinaryString(file);
 });
 
+// ===== 自动识别字段 =====
+function autoDetectColumns(data){
 
-// ===== 智能字段识别 =====
-function detectField(obj, keywords){
-  return Object.keys(obj).find(k =>
-    keywords.some(key => k.toLowerCase().includes(key))
-  );
+  const keys = Object.keys(data[0]);
+
+  fillSelect("term", keys);
+  fillSelect("lang", keys);
+  fillSelect("uv", keys);
+  fillSelect("lw", keys);
+  fillSelect("wow", keys);
+
+  // 智能匹配
+  selectGuess("term", ["term","关键词","search"]);
+  selectGuess("lang", ["语种","lang","language"]);
+  selectGuess("uv", ["search_uv","uv"]);
+  selectGuess("lw", ["lw","last","week"]);
+  selectGuess("wow", ["wow","变化"]);
+
+  document.getElementById("mapping").style.display = "block";
 }
 
+// 填充下拉
+function fillSelect(id, keys){
+  const sel = document.getElementById(id);
+  sel.innerHTML = keys.map(k=>`<option>${k}</option>`).join("");
+}
+
+// 模糊匹配
+function selectGuess(id, keywords){
+  const sel = document.getElementById(id);
+  for(let opt of sel.options){
+    if(keywords.some(k => opt.value.toLowerCase().includes(k))){
+      sel.value = opt.value;
+      break;
+    }
+  }
+}
+
+// ===== 应用字段 =====
+function applyMapping(){
+
+  const termKey = document.getElementById("term").value;
+  const langKey = document.getElementById("lang").value;
+  const uvKey = document.getElementById("uv").value;
+  const lwKey = document.getElementById("lw").value;
+  const wowKey = document.getElementById("wow").value;
+
+  const data = rawData.map(d => ({
+    term: d[termKey],
+    lang: d[langKey],
+    search_uv: Number(d[uvKey]),
+    lw_uv: Number(d[lwKey]),
+    wow: parseFloat(d[wowKey])
+  }));
+
+  processData(data);
+}
+
+// ===== 分析 =====
+function processData(data){
+
+  const filtered = data.filter(d => d.search_uv > 50 && d.lw_uv > 50);
+
+  if(filtered.length === 0){
+    alert("⚠️ 没有符合条件的数据");
+    return;
+  }
+
+  const sorted = filtered.sort((a,b)=>b.wow-a.wow);
+
+  const top10 = sorted.slice(0,10);
+  const bottom10 = sorted.slice(-10).reverse();
+
+  const finalData = [...top10,...bottom10];
+
+  renderChart(finalData);
+  renderLang(finalData);
+  renderTable(finalData);
+  renderInsights(top10,bottom10);
+}
+
+// ===== 图表 =====
+function renderChart(data){
+  if(chart1) chart1.destroy();
+
+  chart1 = new Chart(document.getElementById("trendChart"),{
+    type:"bar",
+    data:{
+      labels:data.map(d=>d.term),
+      datasets:[{label:"WoW%",data:data.map(d=>d.wow)}]
+    }
+  });
+}
+
+function renderLang(data){
+  if(chart2) chart2.destroy();
+
+  const map={};
+  data.forEach(d=>map[d.lang]=(map[d.lang]||0)+1);
+
+  chart2=new Chart(document.getElementById("languageChart"),{
+    type:"pie",
+    data:{labels:Object.keys(map),datasets:[{data:Object.values(map)}]}
+  });
+}
+
+// ===== 表格 =====
+function renderTable(data){
+  const tb=document.querySelector("#dataTable tbody");
+  tb.innerHTML="";
+  data.forEach(d=>{
+    tb.innerHTML+=`
+    <tr>
+      <td>${d.term}</td>
+      <td>${d.lang}</td>
+      <td style="color:${d.wow>0?'green':'red'}">${d.wow}%</td>
+    </tr>`;
+  });
+}
 
 // ===== 主分析 =====
 function analyze(){
