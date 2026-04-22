@@ -137,40 +137,33 @@ function analyze(){
   ${topDown.map(d=>`<div>${d.term} (${d.lang}) ↓ ${d.wow.toFixed(1)}%</div>`).join('')}
   `;
 
-  // ===== 自动结论 =====
-  generateInsight(topUp, topDown);
-}
-
-// ===== 自动分析逻辑 =====
-function generateInsight(up, down){
-
-  let text = "";
+ function generateInsights(top10, bottom10) {
+  const insights = [];
 
   // 上升分析
-  if(up.some(d=>d.term.toLowerCase().includes("dress") || d.term.includes("kleid"))){
-    text += "1️⃣ 连衣裙类目明显上升，市场进入正式/场景化穿搭周期；<br>";
-  }
-
-  if(up.some(d=>d.term.includes("festival") || d.term.includes("party"))){
-    text += "2️⃣ 节日/派对需求增长，带动穿搭关键词上升；<br>";
-  }
+  insights.push("📈 上升趋势：");
+  insights.push(
+    `高增长关键词主要集中在：${top10.slice(0,5).map(d=>d.term).join("、")}，说明近期这些品类需求明显增加。`
+  );
 
   // 下降分析
-  if(down.some(d=>d.term.includes("bikini") || d.term.includes("swim"))){
-    text += "3️⃣ 夏季泳装需求下降，已过搜索高峰；<br>";
+  insights.push("📉 下降趋势：");
+  insights.push(
+    `下降关键词集中在：${bottom10.slice(0,5).map(d=>d.term).join("、")}，可能说明季节性需求减弱。`
+  );
+
+  // 结构判断
+  const positiveRatio = top10.length / (top10.length + bottom10.length);
+  if (positiveRatio > 0.5) {
+    insights.push("📊 市场整体呈增长趋势");
+  } else {
+    insights.push("📊 市场整体趋于降温");
   }
 
-  if(down.some(d=>d.term.includes("tshirt"))){
-    text += "4️⃣ 基础款需求减弱，用户转向搭配类商品；<br>";
-  }
-
-  if(text === ""){
-    text = "📊 当前趋势较为分散，暂无明显集中趋势。";
-  }
-
-  document.getElementById('analysis').innerHTML = text;
+  // 输出
+  const ul = document.getElementById("insights");
+  ul.innerHTML = "";
+  insights.forEach(text => {
+    ul.innerHTML += `<li>${text}</li>`;
+  });
 }
-</script>
-
-</body>
-</html>
