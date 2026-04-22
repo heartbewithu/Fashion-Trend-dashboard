@@ -122,22 +122,31 @@ function parseCSV(text) {
 // ===== 数据处理 =====
 function processData(data) {
 
-  // 筛选
-  const filtered = data.filter(d =>
+  const cleaned = data.map(d => ({
+    term: d["Search term"] || d["term"],
+    lang: d["语种"] || d["lang"],
+    search_uv: Number(d["search_uv"]),
+    lw_uv: Number(d["lw search_uv"]),
+    wow: parseFloat(d["wow"])
+  }));
+
+  const filtered = cleaned.filter(d =>
     d.search_uv > 50 && d.lw_uv > 50
   );
 
-  // 排序
+  if (filtered.length === 0) {
+    alert("⚠️ 没有符合条件的数据，请检查列名或数据格式！");
+    return;
+  }
+
   const sorted = filtered.sort((a, b) => b.wow - a.wow);
 
   const top10 = sorted.slice(0, 10);
   const bottom10 = sorted.slice(-10).reverse();
 
-  const finalData = [...top10, ...bottom10];
-
-  renderChart(finalData);
-  renderLanguageChart(finalData);
-  renderTable(finalData);
+  renderChart([...top10, ...bottom10]);
+  renderLanguageChart([...top10, ...bottom10]);
+  renderTable([...top10, ...bottom10]);
   generateInsights(top10, bottom10);
 }
 
