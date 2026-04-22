@@ -2,80 +2,170 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>欧洲市场搜索趋势分析（完整版）</title>
+<title>欧洲市场搜索趋势分析（稳定版）</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
 body { font-family: Arial; margin:20px; background:#f5f5f5; }
-h2 { margin-top:40px; }
-.chart-container { width:700px; margin-bottom:40px; }
-button { padding:8px 15px; margin-left:10px; }
+.chart-container { width:700px; margin-top:30px; }
 .analysis { background:white; padding:15px; margin-top:20px; }
+#loading { color:red; font-weight:bold; }
 </style>
 </head>
 
 <body>
 
-<h1>📊 欧洲市场搜索趋势分析（智能版）</h1>
+<h1>📊 欧洲市场搜索趋势分析（稳定版）</h1>
 
 <input type="file" id="fileInput" accept=".csv,.xlsx"/>
 <button onclick="analyze()">开始分析</button>
 
+<div id="loading"></div>
+
 <div class="chart-container">
-  <canvas id="trendChart"></canvas>
+  <canvas id="chart"></canvas>
 </div>
 
-<h2>📋 Top上涨 / 下降词</h2>
-<div id="topList"></div>
+<h2>📋 Top结果</h2>
+<div id="result"></div>
 
-<h2>🧠 自动分析结论</h2>
+<h2>🧠 自动分析</h2>
 <div id="analysis" class="analysis"></div>
 
 <script>
+
 let rawData = [];
 
-// ===== 读取文件 =====
+// ===== 文件读取（稳定版）=====
 document.getElementById('fileInput').addEventListener('change', function(e){
+
   const file = e.target.files[0];
   if(!file) return;
 
+  document.getElementById('loading').innerText = "⏳ 正在读取文件...";
+
   const reader = new FileReader();
 
-  if(file.name.endsWith('.csv')){
-    reader.onload = function(e){
-      const text = e.target.result;
-      rawData = parseCSV(text);
-    };
-    reader.readAsText(file);
-  } else {
-    reader.onload = function(e){
-      const workbook = XLSX.read(e.target.result, {type:'binary'});
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      rawData = XLSX.utils.sheet_to_json(sheet);
-    };
-    reader.readAsBinaryString(file);
-  }
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type:'array'});
+
+      // 自动找有数据的sheet
+      let sheet = null;
+      for(let name of workbook.SheetNames){
+        const temp = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
+        if(temp.length > 0){
+          sheet = workbook.Sheets[name];
+          rawData = temp;
+          break;
+        }
+      }
+
+      console.log("读取数据:", rawData);
+
+      if(rawData.length === 0){
+        alert("❌ 文件为空 or 没有表头");
+      } else {
+        document.getElementById('loading').innerText = "✅ 文件读取成功";
+      }
+
+    }catch(err){
+      console.error(err);
+      alert("❌ 文件解析失败（可能格式不对）");
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
 });
 
-// ===== CSV解析 =====
-function parseCSV(text){
-  const rows = text.split("\n").map(r => r.split(","));
-  const headers = rows[0];
-  return rows.slice(1).map(row => {
-    let obj = {};
-    headers.forEach((h,i)=> obj[h.trim()] = row[i]);
-    return obj;
-  });
-}
 
-// ===== 智能识别字段 =====
+// ===== 智能字段识别 =====
 function detectField(obj, keywords){
   return Object.keys(obj).find(k =>
     keywords.some(key => k.toLowerCase().includes(key))
   );
 }
+
+
+// ===== 主分析 =====
+function analyze(){
+
+  if(rawData.length === 0){
+    alert("⚠️ 请先上传正确文件");
+    return;
+  }
+
+  document.getElementById('loading').innerText = "⏳ 分析中...";
+
+  try{
+
+    const sample = rawData[0];
+
+    const termKey = detectField(sample, ['term','search']);
+    const uvKey = detectField(sample, ['search_uv','uv']);
+    const lastUvKey = detectField(sample, ['lw','last']);
+    const wowKey = detectField(sample, ['wow','环比','%']);
+
+    if(!termKey || !uvKey || !lastUvKey){
+      alert("❌ 无法识别关键字段（term / uv / last uv）");
+      return;
+    }
+
+    let data = rawData.map(d => {
+
+      let uv = Number(d[uvKey]);
+      let lastUv = Number(d[lastUvKey]);
+
+      if(!uv || !lastUv) return null;
+
+      let wow = wowKey ? parseFloat(d[wowKey]) :
+        ((uv - lastUv) / lastUv * 100);
+
+      return {
+        term: d[termKey],
+        uv,
+        lastUv,
+        wow
+      };
+
+    }).filter(d => d !== null);
+
+    // 过滤
+    data = data.filter(d => d.uv > 50 && d.lastUv > 50);
+
+    if(data.length === 0){
+      alert("⚠️ 数据过滤后为空（可能UV太小）");
+      return;
+    }
+
+    // 排序
+    const up = [...data].sort((a,b)=>b.wow-a.wow).slice(0,10);
+    const down = [...data].sort((a,b)=>a.wow-b.wow).slice(0,10);
+
+    // ===== 图表 =====
+    new Chart(document.getElementById('chart'), {
+      type: 'bar',
+      data: {
+        labels: data.map(d=>d.term),
+        datasets: [{
+          label: 'WoW变化 (%)',
+          data: data.map(d=>d.wow)
+        }]
+      }
+    });
+
+    // ===== 结果 =====
+    document.getElementById('result').innerHTML = `
+      <h3>📈 上涨Top10</h3>
+      ${up.map(d=>`<div>${d.term} ↑ ${d.wow.toFixed(1)}%</div>`).join('')}
+
+      <h3>📉 下降Top10</h3>
+      ${down.map(d=>`<div>${d.term} ↓ ${d.wow.toFixed(1)}%</div>`).join('')}
+    `;
+
 
 // ===== 主分析 =====
 function analyze(){
