@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>欧洲服饰搜索趋势分析</title>
+
+  <!-- 图表 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Excel解析 -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
   <style>
     body {
@@ -31,6 +36,10 @@
       background-color: #333;
       color: white;
     }
+    #insights {
+      background: white;
+      padding: 15px;
+    }
   </style>
 </head>
 
@@ -38,20 +47,19 @@
 
 <h1>📊 欧洲市场搜索趋势分析</h1>
 
-<!-- ✅ CSV上传 -->
-<input type="file" id="csvFile" accept=".csv">
+<h2>📂 上传数据</h2>
+<input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
 
-<!-- 趋势图 -->
+<!-- 图表 -->
 <div class="chart-container">
   <canvas id="trendChart"></canvas>
 </div>
 
-<!-- 语种分布 -->
 <div class="chart-container">
   <canvas id="languageChart"></canvas>
 </div>
 
-<h2>📋 数据表</h2>
+<h2>📋 数据表（Top & Bottom 10）</h2>
 <table id="dataTable">
   <thead>
     <tr>
@@ -63,36 +71,82 @@
   <tbody></tbody>
 </table>
 
+<h2>📊 自动分析</h2>
+<ul id="insights"></ul>
+
 <script>
-let trendChart;
-let languageChart;
 
-// ===== 初始化空数据 =====
-let data = [];
+let chart1, chart2;
 
-// ===== 渲染函数 =====
-function renderAll(data) {
+// ===== 文件读取 =====
+document.getElementById('fileInput').addEventListener('change', handleFile);
 
-  // 清空表格
-  const tableBody = document.querySelector("#dataTable tbody");
-  tableBody.innerHTML = "";
+function handleFile(e) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
 
-  // 表格
-  data.forEach(d => {
-    const row = `
-      <tr>
-        <td>${d.term}</td>
-        <td>${d.lang}</td>
-        <td style="color:${d.wow>0?'green':'red'}">${d.wow}%</td>
-      </tr>
-    `;
-    tableBody.innerHTML += row;
+  if (file.name.endsWith(".csv")) {
+    reader.onload = function(e) {
+      parseCSV(e.target.result);
+    };
+    reader.readAsText(file);
+  } else {
+    reader.onload = function(e) {
+      const workbook = XLSX.read(e.target.result, { type: 'binary' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet);
+      processData(json);
+    };
+    reader.readAsBinaryString(file);
+  }
+}
+
+// ===== CSV解析 =====
+function parseCSV(text) {
+  const rows = text.split("\n").slice(1);
+
+  const data = rows.map(row => {
+    const cols = row.split(",");
+    return {
+      term: cols[0],
+      lang: cols[1],
+      search_uv: Number(cols[3]),
+      lw_uv: Number(cols[4]),
+      wow: parseFloat(cols[6])
+    };
   });
 
-  // ===== 图1：趋势 =====
-  if (trendChart) trendChart.destroy();
+  processData(data);
+}
 
-  trendChart = new Chart(document.getElementById('trendChart'), {
+// ===== 数据处理 =====
+function processData(data) {
+
+  // 筛选
+  const filtered = data.filter(d =>
+    d.search_uv > 50 && d.lw_uv > 50
+  );
+
+  // 排序
+  const sorted = filtered.sort((a, b) => b.wow - a.wow);
+
+  const top10 = sorted.slice(0, 10);
+  const bottom10 = sorted.slice(-10).reverse();
+
+  const finalData = [...top10, ...bottom10];
+
+  renderChart(finalData);
+  renderLanguageChart(finalData);
+  renderTable(finalData);
+  generateInsights(top10, bottom10);
+}
+
+// ===== 图表 =====
+function renderChart(data) {
+
+  if (chart1) chart1.destroy();
+
+  chart1 = new Chart(document.getElementById('trendChart'), {
     type: 'bar',
     data: {
       labels: data.map(d => d.term),
@@ -102,16 +156,19 @@ function renderAll(data) {
       }]
     }
   });
+}
 
-  // ===== 图2：语种 =====
+// ===== 语种分布 =====
+function renderLanguageChart(data) {
+
+  if (chart2) chart2.destroy();
+
   const langCount = {};
   data.forEach(d => {
     langCount[d.lang] = (langCount[d.lang] || 0) + 1;
   });
 
-  if (languageChart) languageChart.destroy();
-
-  languageChart = new Chart(document.getElementById('languageChart'), {
+  chart2 = new Chart(document.getElementById('languageChart'), {
     type: 'pie',
     data: {
       labels: Object.keys(langCount),
@@ -122,38 +179,54 @@ function renderAll(data) {
   });
 }
 
-// ===== CSV读取 =====
-document.getElementById("csvFile").addEventListener("change", function(e) {
-  const file = e.target.files[0];
-  const reader = new FileReader();
+// ===== 表格 =====
+function renderTable(data) {
+  const tableBody = document.querySelector("#dataTable tbody");
+  tableBody.innerHTML = "";
 
-  reader.onload = function(event) {
-    const text = event.target.result;
-    const rows = text.split("\n").slice(1); // 跳过表头
+  data.forEach(d => {
+    tableBody.innerHTML += `
+      <tr>
+        <td>${d.term}</td>
+        <td>${d.lang}</td>
+        <td style="color:${d.wow>0?'green':'red'}">${d.wow}%</td>
+      </tr>
+    `;
+  });
+}
 
-    data = rows.map(row => {
-      const cols = row.split(",");
-      return {
-        term: cols[0],
-        lang: cols[1],
-        wow: parseFloat(cols[2])
-      };
-    }).filter(d => d.term); // 去空行
+// ===== 自动分析 =====
+function generateInsights(top10, bottom10) {
 
-    renderAll(data);
-  };
+  const insights = [];
 
-  reader.readAsText(file);
-});
+  // 上升
+  insights.push("📈 上升趋势：");
+  insights.push(
+    `增长较快的关键词包括：${top10.slice(0,5).map(d=>d.term).join("、")}，说明相关品类需求明显提升。`
+  );
 
-// ===== 默认数据（可删）=====
-data = [
-  { term: "tailleur", lang: "法语", wow: 37.2 },
-  { term: "satinkleid", lang: "德语", wow: 37.2 },
-  { term: "abendkleid", lang: "德语", wow: 22.2 }
-];
+  // 下降
+  insights.push("📉 下降趋势：");
+  insights.push(
+    `下降明显的关键词包括：${bottom10.slice(0,5).map(d=>d.term).join("、")}，可能反映季节性或需求回落。`
+  );
 
-renderAll(data);
+  // 市场判断
+  if (top10.length > bottom10.length) {
+    insights.push("📊 市场整体呈增长趋势");
+  } else {
+    insights.push("📊 市场整体趋于降温");
+  }
+
+  // 输出
+  const ul = document.getElementById("insights");
+  ul.innerHTML = "";
+
+  insights.forEach(text => {
+    ul.innerHTML += `<li>${text}</li>`;
+  });
+}
 
 </script>
 
